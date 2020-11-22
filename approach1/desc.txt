@@ -1,22 +1,15 @@
-# Bootstraping Mixed Effects EPA impact --
-
-setwd("~/GitHub/mixed_effects_bootstrapping")
-
-# libraries ---------------------------------------------------------------
-
+#Libraries 
 library(lme4)
 library(dplyr)
 library(plyr)
 library(purrr)
 library(ggplot2)
+library(ggthemes)
+library(RColorBrewer)
+library(extrafont)
+loadfonts(device = "win")
 library(parallel)
-#library(ggthemes)
-#library(RColorBrewer)
-#library(extrafont)
-#loadfonts(device = "win")
-#set1<-brewer.pal(n = 9, name = "Set1") 
-
-# Read Raw Data -----------------------------------------------------------
+set1<-brewer.pal(n = 9, name = "Set1") 
 
 seasons <- 2000:2019
 pbp <- purrr::map_df(seasons, function(x) {
@@ -28,6 +21,7 @@ pbp <- purrr::map_df(seasons, function(x) {
 })
 
 # data prep ---------------------------------------------------------------
+
 
 npass <- pbp %>%
   filter(play_type == 'pass',
@@ -71,26 +65,42 @@ pbp_mut<-pbp%>%
   )   %>% 
   select(epa,temp,wind,passer_player_id,pos_coach,def_coach,team,wp,def_team,season,outdoor)
 
-sample = pbp_mut[sample(nrow(pbp_mut), 100000, replace = FALSE),]
+sample = pbp_mut[sample(nrow(pbp_mut), 50000, replace = FALSE),]
 
-saveRDS(sample,'approach2/sample.rds')
+saveRDS(sample,'sample.rds')
 
-# Mixed model -------------------------------------------------------------
 
-sample = readRDS('approach2/sample1.rds')
 
+# analysis ----------------------------------------------------------------
+
+#Read Data
+sample = readRDS('sample.rds')
+
+#Mixed model 
 mixed_model<-sample %>% 
   lmer(formula=
          epa ~
-         wind + 
+         wp + 
+         (1|passer_player_id)+
+         (1|pos_coach)+
+         (1|team)+
+         (1|def_team)+
          (1|def_coach)
        ,
        control=lmerControl(optimizer="nloptwrap", calc.derivs = FALSE))
 #Summary
 mixed_model %>% summary()
-getME(mixed_model, "theta")
 
-# Sampler function --------------------------------------------------------
+#This is what we are going to be getting for each bootstrap simulation
+getME(mixed_model, "theta") #Research Cholesky factors | try ?getME
+
+getME(mixed_model, "theta")['team.(Intercept)']
+
+#Bootstrap 
+#Followed this tutorial: https://stats.idre.ucla.edu/r/dae/mixed-effects-logistic-regression/
+
+#Create sampler function. 
+#Source: http://biostat.mc.vanderbilt.edu/wiki/Main/HowToBootstrapCorrelatedData
 
 sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
   cid <- unique(dat[, clustervar[1]])
@@ -113,20 +123,17 @@ sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
   return(dat)
 }
 
-
-# Sampling and Clustering ----------------------------------------------------------------
-
 memory.limit()
 memory.limit(size=30000)
 
+#Set seed
 #set.seed(20)
 
-sample<-sample %>% select(epa,wind,def_coach) 
+#changed variable of interest every time
 
-# index
-start_time <- Sys.time();indx <- sampler(sample, "def_coach", reps = 300);end_time <- Sys.time();end_time - start_time
-
-# resample
+#index
+start_time <- Sys.time();indx <- sampler(sample, "team", reps = 300);end_time <- Sys.time();end_time - start_time
+#resampled
 start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
 
 #Here we are getting coefficients from original model to use as starting point
@@ -140,14 +147,17 @@ clus <- makeCluster(4)
 start_time <-Sys.time();clusterExport(clus, c("resampled_data", "f", "r"));end_time <- Sys.time();end_time - start_time
 start_time <-Sys.time();clusterEvalQ(clus, require(lme4));end_time <- Sys.time();end_time - start_time
 
-# Bootstrap function ------------------------------------------------------
-
+#Create Bootstrapping  function
 boot_function <- function(i) {
   simu <- try(
     lmer(
       formula=
         epa ~
-        wind + 
+        wp + 
+        (1|passer_player_id)+
+        (1|pos_coach)+
+        (1|team)+
+        (1|def_team)+
         (1|def_coach)
       ,
       data = resampled_data
@@ -165,8 +175,7 @@ boot_function <- function(i) {
   c(fixef(simu), getME(simu, "theta"))
 }
 
-# Run bootstrap -----------------------------------------------------------
-
+#Run bootstrap 
 #set.seed(20)
 
 start <- proc.time(); output <- parLapplyLB(clus, X = levels(resampled_data$Replicate), fun = boot_function); end <- proc.time();end-start
@@ -177,38 +186,44 @@ mean(success)
 
 #Stop cluster
 stopCluster(clus)
-rm(resampled_data)
 
-# Get results -------------------------------------------------------------
-
+#Create dataframe
 final <- do.call(cbind, output[success])
 final_transposed<-t(final) %>% data.frame()
-coefficients <- final_transposed$def_coach
+coefficients <- final_transposed$team..Intercept.
 
-saveRDS(coefficients,'approach2/defcoach1.rds')
+#saveRDS(coefficients,'team.rds')
 
-# Plot Result -------------------------------------------------------------
+#Prepare data for plot 
+coach <- final_transposed %>% select(pos_coach..Intercept.) %>% mutate(Variable='Head Coach') %>% select(intercept = pos_coach..Intercept.,Variable)
+qb <- final_transposed %>% select(passer_player_id..Intercept.) %>% mutate(Variable='Quarterback') %>% select(intercept = passer_player_id..Intercept.,Variable)
+def_team <- final_transposed %>% select(def_team..Intercept.) %>% mutate(Variable='Opposing Defensive Team')%>% select(intercept = def_team..Intercept.,Variable)
+def_coach <- final_transposed %>% select(def_coach..Intercept.) %>% mutate(Variable='Opposing Head Coach')%>% select(intercept = def_coach..Intercept.,Variable)
+team <- final_transposed %>% select(team..Intercept.) %>% mutate(Variable='Team (Proxy for Offensive Supporting Cast)')%>% select(intercept = team..Intercept.,Variable)
 
-plot <- data.frame(coef = readRDS('approach2/defcoach1.rds'))
 
-ggplot(plot,aes(x=coef))+
+plot <- rbind(coach,qb,team,def_team,def_coach)
+#plot$Variable <- factor(plot$Variable, levels = c('Head Coach','Team (Proxy for Offensive Supporting Cast)','Quarterback'))
+
+#Straight forward plot
+ggplot(plot,aes(x=intercept, fill=Variable))+
   geom_density(alpha=.4)+
-  theme_bw()+ 
+  theme_bw()+  #"#4DAF4A","#FF7F00","#984EA3"
   labs(x='Coefficient', y='Density')
 
 
-# cum_plot ----------------------------------------------------------------
+passer<-readRDS('coefs_passer.rds')
+passer<-data.frame('Variable'='QB','Coefficient'=passer)
 
-qb <- data.frame(coef = readRDS('approach2/passer1.rds'),effect='QB')
-team <- data.frame(coef = readRDS('approach2/team1.rds'),effect='Team')
-coach <- data.frame(coef = readRDS('approach2/poscoach1.rds'),effect='Coach')
-defteam <- data.frame(coef = readRDS('approach2/defteam1.rds'),effect='DefTeam')
-defcoach <- data.frame(coef = readRDS('approach2/defcoach1.rds'),effect='DefCoach')
+poscoach<-readRDS('coefs_pos_coach.rds')
+poscoach<-data.frame('Variable'='HC','Coefficient'=poscoach)
 
-plot2 <- rbind(qb,team,coach,defteam,defcoach)
+team<-readRDS('team.rds')
+team<-data.frame('Variable'='Team','Coefficient'=team)
 
-ggplot(plot2,aes(x=coef,fill=effect))+
+plot2 <- rbind(passer,poscoach,team)
+
+ggplot(plot2,aes(x=Coefficient, fill=Variable))+
   geom_density(alpha=.4)+
-  theme_bw()+ 
+  theme_bw()+  #"#4DAF4A","#FF7F00","#984EA3"
   labs(x='Coefficient', y='Density')
-

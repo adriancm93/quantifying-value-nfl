@@ -123,31 +123,26 @@ sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
   return(dat)
 }
 
-#Increase memory; it will require a lot
 memory.limit()
 memory.limit(size=30000)
 
 #Set seed
 set.seed(20)
 
-#Resample: this will take a minute (using player_id since it has largest number of levels)
-#Feel free to increase reps as much as your computer power allows you (or decrease sample size by a lot) <- beware this might take hours
+#index
 start_time <- Sys.time();indx <- sampler(sample, "passer_player_id", reps = 300);end_time <- Sys.time();end_time - start_time
-
-#This will take a couple minutes...
+#resampled
 start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
 
 #Here we are getting coefficients from original model to use as starting point
 f <- fixef(mixed_model)
 r <- getME(mixed_model, "theta")
 
-#Here we setup multiprocessing to greatly speed up our simulations 
-#check number of processors on your computer and change makeCluster() if needed (mine has 4)
+rm(indx)
+rm(sample)
 clus <- makeCluster(4)
-start_time <-Sys.time();clusterExport(clus, c("resampled_data", "f", "r"));end_time <- Sys.time()
-end_time - start_time
-start_time <-Sys.time();clusterEvalQ(clus, require(lme4));end_time <- Sys.time()
-end_time - start_time
+start_time <-Sys.time();clusterExport(clus, c("resampled_data", "f", "r"));end_time <- Sys.time();end_time - start_time
+start_time <-Sys.time();clusterEvalQ(clus, require(lme4));end_time <- Sys.time();end_time - start_time
 
 #Create Bootstrapping  function
 boot_function <- function(i) {
@@ -161,6 +156,8 @@ boot_function <- function(i) {
         (1|team)+
         (1|def_team)+
         (1|def_coach)
+      ,
+      data = resampled_data
       ,
       control=lmerControl(optimizer="nloptwrap", calc.derivs = FALSE)
       ,

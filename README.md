@@ -2,6 +2,6 @@
 Revisiting my QB importance analysis
 
 
-- This time I'll run an analysis for each random effect separetely and will add the remaining variables of interest as fixed
-    - This should help fix the resampling issue (just one random effect at a time)
-    - get a random subsample sample? 
+- This time I'll run an analysis for each random effect separetely 
+    - This should help fix the resampling issue (just retreive random estimate of variable of interest)
+- To reduce time, I will a random subsample (maybe 75,000 obs after filtering for useful instances)

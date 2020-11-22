@@ -9,10 +9,9 @@ library(RColorBrewer)
 library(extrafont)
 loadfonts(device = "win")
 library(parallel)
-set1<-brewer.pal(n = 9, name = "Set1") #This is to see color codes
+set1<-brewer.pal(n = 9, name = "Set1") 
 
-
-seasons <- 2006:2019
+seasons <- 2000:2019
 pbp <- purrr::map_df(seasons, function(x) {
   readRDS(
     url(
@@ -20,6 +19,9 @@ pbp <- purrr::map_df(seasons, function(x) {
     )
   )
 })
+
+# data prep ---------------------------------------------------------------
+
 
 npass <- pbp %>%
   filter(play_type == 'pass',
@@ -38,7 +40,7 @@ pbp_mut<-pbp%>%
     wp <= .80,
     game_half != 'Overtime',
     !is.na(epa),
-    num_plays >= 80,
+    num_plays >= 100,
     !is.na(down),
     penalty == 0
   )%>%
@@ -53,21 +55,36 @@ pbp_mut<-pbp%>%
     ,
     team = paste(season,posteam,sep='_')
     ,
-    opponent = paste(season,defteam,sep='_')
+    def_team = paste(season,defteam,sep='_')
+    ,
+    outdoor = if_else(roof %in% c('outdoors','open'),1,0)
+    ,
+    era = if_else(season %in% 2000:2005,'era1',
+                  if_else(season %in% 2006:2013,'era2',
+                          if_else(season %in% 2014:2017,'era3','era4')))
   )   %>% 
-  select(epa,temp,wind,passer_player_id,pos_coach,def_coach,team,wp,opponent,season)
+  select(epa,temp,wind,passer_player_id,pos_coach,def_coach,team,wp,def_team,season,outdoor)
+
+sample = pbp_mut[sample(nrow(pbp_mut), 50000, replace = FALSE),]
+
+saveRDS(sample,'sample.rds')
+
+
+
+# analysis ----------------------------------------------------------------
+
+#Read Data
+sample = readRDS('sample.rds')
 
 #Mixed model 
-mixed_model<-pbp_mut %>% 
+mixed_model<-sample %>% 
   lmer(formula=
          epa ~
-         temp +
-         wind + 
          wp + 
          (1|passer_player_id)+
          (1|pos_coach)+
-         (1|team) +
-         (1|opponent) +
+         (1|team)+
+         (1|def_team)+
          (1|def_coach)
        ,
        control=lmerControl(optimizer="nloptwrap", calc.derivs = FALSE))
@@ -77,13 +94,15 @@ mixed_model %>% summary()
 #This is what we are going to be getting for each bootstrap simulation
 getME(mixed_model, "theta") #Research Cholesky factors | try ?getME
 
+getME(mixed_model, "theta")['passer_player_id.(Intercept)']
+
 #Bootstrap 
 #Followed this tutorial: https://stats.idre.ucla.edu/r/dae/mixed-effects-logistic-regression/
 
 #Create sampler function. 
 #Source: http://biostat.mc.vanderbilt.edu/wiki/Main/HowToBootstrapCorrelatedData
 
-resampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
+sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
   cid <- unique(dat[, clustervar[1]])
   ncid <- length(cid)
   recid <- sample(cid, size = ncid * reps, replace = TRUE)
@@ -113,18 +132,10 @@ set.seed(20)
 
 #Resample: this will take a minute (using player_id since it has largest number of levels)
 #Feel free to increase reps as much as your computer power allows you (or decrease sample size by a lot) <- beware this might take hours
-start_time <- Sys.time();indx <- resampler(pbp_mut, "passer_player_id", reps = 150);end_time <- Sys.time()
-end_time - start_time
+start_time <- Sys.time();indx <- sampler(sample, "passer_player_id", reps = 300);end_time <- Sys.time();end_time - start_time
 
 #This will take a couple minutes...
-start_time <- Sys.time(); resampled_data <- cbind(indx, pbp_mut[indx$RowID, ]);end_time <- Sys.time()
-end_time - start_time
-
-#Consider saving pbp_mut 
-#saveRDS(pbp_mut,'name.RDS)
-
-#Delete heavy data SAVE FIRST?
-rm(indx,pbp)
+start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
 
 #Here we are getting coefficients from original model to use as starting point
 f <- fixef(mixed_model)
@@ -140,20 +151,23 @@ end_time - start_time
 
 #Create Bootstrapping  function
 boot_function <- function(i) {
-  simu <- try(  lmer(formula = 
-                       epa ~
-                       temp +
-                       wind + 
-                       wp + 
-                       (1|passer_player_id)+
-                       (1|pos_coach)+
-                       (1|team) +
-                       (1|opponent)
-                     ,
-                     data = resampled_data,
-                     subset = Replicate == i,
-                     start = list(fixef = f, theta = r),
-                     control=lmerControl(optimizer="nloptwrap")), silent = TRUE)
+  simu <- try(
+    lmer(
+      formula=
+        epa ~
+        wp + 
+        (1|passer_player_id)+
+        (1|pos_coach)+
+        (1|team)+
+        (1|def_team)+
+        (1|def_coach)
+      ,
+      control=lmerControl(optimizer="nloptwrap", calc.derivs = FALSE)
+      ,
+      start = list(fixef = f, theta = r)
+    )
+    ,
+    silent = TRUE)
   if (class(simu) == "try-error")
     return(simu)
   c(fixef(simu), getME(simu, "theta"))

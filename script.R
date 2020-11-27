@@ -28,7 +28,6 @@ pbp <- purrr::map_df(seasons, function(x) {
 })
 
 # data prep ---------------------------------------------------------------
-
 npass <- pbp %>%
   filter(play_type == 'pass',
          season_type == 'REG') %>%
@@ -51,6 +50,8 @@ pbp_mut<-pbp%>%
     penalty == 0
   )%>%
   dplyr::mutate(
+    home = if_else(posteam==home_team,1,0)
+    ,
     pos_coach = if_else(posteam==home_team,home_coach,away_coach) 
     ,
     def_coach = if_else(defteam==home_team,home_coach,away_coach) 
@@ -69,21 +70,35 @@ pbp_mut<-pbp%>%
                   if_else(season %in% 2006:2013,'era2',
                           if_else(season %in% 2014:2017,'era3','era4')))
   )   %>% 
-  select(epa,temp,wind,passer_player_id,pos_coach,def_coach,team,wp,def_team,season,outdoor)
+  select(epa,passer_player_id,pos_coach,def_coach,team,wp,def_team,season,home,era)
 
-sample = pbp_mut[sample(nrow(pbp_mut), 100000, replace = FALSE),]
+rm(pbp)
 
-saveRDS(sample,'approach2/sample.rds')
+#set.seed(20)
+
+era1 = pbp_mut %>% filter(era == 'era1');era1=era1[sample(nrow(era1), 25000, replace = FALSE),]
+era2 = pbp_mut %>% filter(era == 'era2');era2=era2[sample(nrow(era2), 25000, replace = FALSE),]
+era3 = pbp_mut %>% filter(era == 'era3');era3=era3[sample(nrow(era3), 30000, replace = FALSE),]
+era4 = pbp_mut %>% filter(era == 'era4');era4=era4[sample(nrow(era4), 20000, replace = FALSE),]
+
+sample = rbind(era1,era2,era3,era4)
+
+saveRDS(sample,'approach3/sample3.rds')
 
 # Mixed model -------------------------------------------------------------
 
-sample = readRDS('approach2/sample1.rds')
+sample = readRDS('approach3/sample3.rds')
 
 mixed_model<-sample %>% 
   lmer(formula=
          epa ~
-         wind + 
-         (1|def_coach)
+         wp + 
+         (1|team) + 
+         (1|passer_player_id) +
+         (1|team:passer_player_id)+
+         (1|def_team)+
+         (1|def_team:passer_player_id)+
+         (1|def_team:team)
        ,
        control=lmerControl(optimizer="nloptwrap", calc.derivs = FALSE))
 #Summary
@@ -121,10 +136,10 @@ memory.limit(size=30000)
 
 #set.seed(20)
 
-sample<-sample %>% select(epa,wind,def_coach) 
+#sample<-sample %>% select(epa,wind,def_coach) 
 
 # index
-start_time <- Sys.time();indx <- sampler(sample, "def_coach", reps = 300);end_time <- Sys.time();end_time - start_time
+start_time <- Sys.time();indx <- sampler(sample, "era", reps = 10);end_time <- Sys.time();end_time - start_time
 
 # resample
 start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
@@ -147,8 +162,13 @@ boot_function <- function(i) {
     lmer(
       formula=
         epa ~
-        wind + 
-        (1|def_coach)
+        wp + 
+        (1|team) + 
+        (1|passer_player_id) +
+        (1|team:passer_player_id)+
+        (1|def_team)+
+        (1|def_team:passer_player_id)+
+        (1|def_team:team)
       ,
       data = resampled_data
       ,
@@ -167,8 +187,8 @@ boot_function <- function(i) {
 
 # Run bootstrap -----------------------------------------------------------
 
-#set.seed(20)
-
+rm(.Random.seed, envir=globalenv())
+# min for 10 samples 
 start <- proc.time(); output <- parLapplyLB(clus, X = levels(resampled_data$Replicate), fun = boot_function); end <- proc.time();end-start
 
 #Success rate
@@ -183,19 +203,18 @@ rm(resampled_data)
 
 final <- do.call(cbind, output[success])
 final_transposed<-t(final) %>% data.frame()
-coefficients <- final_transposed$def_coach
+coefficients <- final_transposed
 
-saveRDS(coefficients,'approach2/defcoach1.rds')
+saveRDS(coefficients,'approach3/bootstrap1_10samples.rds')
 
 # Plot Result -------------------------------------------------------------
 
-plot <- data.frame(coef = readRDS('approach2/defcoach1.rds'))
+plot <- data.frame(coef = readRDS(''))
 
 ggplot(plot,aes(x=coef))+
   geom_density(alpha=.4)+
   theme_bw()+ 
   labs(x='Coefficient', y='Density')
-
 
 # cum_plot ----------------------------------------------------------------
 
@@ -212,6 +231,22 @@ ggplot(plot2,aes(x=coef,fill=effect))+
   theme_bw()+ 
   labs(x='Coefficient', y='Density')
 
+# approach 3 plot ---------------------------------------------------------
+
+plot3 <- readRDS('approach3/bootstrap1_10samples.rds')
+
+qb<-data.frame(coef = plot$coef.passer_player_id..Intercept.,effect = 'QB')
+team<- data.frame(coef = plot$coef.team..Intercept.,effect='Team')
+defteam<- data.frame(coef = plot$coef.def_team..Intercept.,effect='DefTeam')
+
+plot3 <- rbind(qb,team,defteam)
+
+plot3$effect <- factor(plot3$effect,levels = c('DefTeam','Team','QB'))
+
+ggplot(plot3,aes(x=coef,fill=effect))+
+  geom_density(alpha=.4)+
+  theme_bw()+ 
+  labs(x='Coefficient', y='Density')
 
 
-
+resampled_data

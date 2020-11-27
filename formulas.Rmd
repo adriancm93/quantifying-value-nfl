@@ -1,0 +1,62 @@
+---
+date: "November, 2020"
+linestretch: 1.2
+fontsize: 12pt
+mainfont: Calibri Light
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: false
+    toc: false
+    
+---
+# Mixed Effects Project Revisited - Formulas
+
+The goal is to find the marginal effect of random-effect regressor $Z_{p}$ $(QB, Team, Opponent)$ on passing efficiency $(EPA_{pass})$ while controlling for remaining random effects. The effects will be quantified by estimating random-effect coefficients and transforming them into parameters: $\theta_{p}$. Random-effect coefficients are "*parameterized*" as the relative Cholesky factors of each random effect term $Z_{p}$. $X_{p}$ is any fixed-effect(s) with coefficient(s) $\beta_{p}$. Coefficients will be estimated using OLS. 
+
+# Formulas
+
+**Example:** Finding marginal effect $(\theta_{1})$ on passing efficiency $(EPA_{pass})$ when there's a change in *QB* $(\Delta QB)$; dependent on $Team$ and $Opponent$
+
+$$ 
+\begin{aligned}
+{EPA}_{pass} = 
+\beta_{p,i}X_{p,i} + \theta_{1}{QB}_{i} + \theta_{2}{Team}_{i} + \theta_{3}{Team}_{i}QB_{i} + \\ 
+\theta_{4}{Opponent}_{i} +\theta_{5}{Opponent}_{i}{QB}_{i} +\in_{i}
+\end{aligned}
+$$
+
+$$
+\large 
+\frac{{EPA}_{pass}}{\Delta {QB}} = \theta_{1} + \theta_{3}{Team}_{i}+ \theta_{5}{Opponent}_{i} 
+$$  
+
+**Equation:** Finding $\theta_{p}$ on $EPA_{pass}$ when $\Delta Z_{p}$; dependent on remaining random-effects.
+
+$$
+\begin{aligned}
+{EPA}_{pass} = 
+\beta_{p,i}X_{p,i} +\theta_{1}{QB}_{i} + \theta_{2}{Team}_{i} + \theta_{3}{Team}_{i}{QB}_{i} + \theta_{4}{Opponent}_{i} +\\ 
+\theta_{5}{Opponent}_{i}QB_{i} + \theta_{6}Opponent_{i}Team_{i} +\in_{i}
+\end{aligned}
+$$
+
+I should be able to estimate the parameters $\theta_{1},\theta_{2},\theta_{4}$
+
+$$
+\large 
+\frac{{EPA}_{pass}}{\Delta {QB}} = \theta_{1} + \theta_{3}{Team}_{i}+ \theta_{5}{Opponent}_{i} 
+$$ 
+
+$$
+\large 
+\frac{{EPA}_{pass}}{\Delta {Team}} = \theta_{2} + \theta_{3}{QB}_{i}+ \theta_{6}{Opponent}_{i} 
+$$ 
+
+$$
+\large 
+\frac{{EPA}_{pass}}{\Delta {Opponent}} = \theta_{4} + \theta_{5}{QB}_{i}+ \theta_{6}{Team}_{i} 
+$$ 
+The parameters $\theta_{1},\theta_{2},\theta_{4}$ should be able to tell us the relative impact that $QB$, $Team$, and $Opponent$ have on $EPA_{pass}$ dependent on other random and fixed effects.
+
+

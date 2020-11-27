@@ -212,3 +212,6 @@ ggplot(plot2,aes(x=coef,fill=effect))+
   theme_bw()+ 
   labs(x='Coefficient', y='Density')
 
+
+
+

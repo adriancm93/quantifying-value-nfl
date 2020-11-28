@@ -87,7 +87,7 @@ saveRDS(sample,'approach3/sample3.rds')
 
 # Mixed model -------------------------------------------------------------
 
-sample = readRDS('approach3/sample3.rds')
+sample = readRDS('approach3/sample1.rds')
 
 mixed_model<-sample %>% 
   lmer(formula=
@@ -134,13 +134,11 @@ sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
 memory.limit()
 memory.limit(size=30000)
 
-#set.seed(20)
+sample<-sample %>% select(epa,wp,team,def_team,passer_player_id,era) 
 
-#sample<-sample %>% select(epa,wind,def_coach) 
-
+rm(.Random.seed, envir=globalenv())
 # index
-start_time <- Sys.time();indx <- sampler(sample, "era", reps = 10);end_time <- Sys.time();end_time - start_time
-
+start_time <- Sys.time();indx <- sampler(sample, "era", reps = 40);end_time <- Sys.time();end_time - start_time
 # resample
 start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
 
@@ -187,8 +185,9 @@ boot_function <- function(i) {
 
 # Run bootstrap -----------------------------------------------------------
 
-rm(.Random.seed, envir=globalenv())
-# min for 10 samples 
+# 20 min for 10 samples
+# 178 min for 50 (1)
+# 20 min for 50 samples? 
 start <- proc.time(); output <- parLapplyLB(clus, X = levels(resampled_data$Replicate), fun = boot_function); end <- proc.time();end-start
 
 #Success rate
@@ -205,11 +204,12 @@ final <- do.call(cbind, output[success])
 final_transposed<-t(final) %>% data.frame()
 coefficients <- final_transposed
 
-saveRDS(coefficients,'approach3/bootstrap1_10samples.rds')
+saveRDS(coefficients,'approach3/results/bootstrap3_50samples.rds')
 
 # Plot Result -------------------------------------------------------------
 
-plot <- data.frame(coef = readRDS(''))
+plot <- data.frame(coef = readRDS('approach3/bootstrap1_10samples.rds'))
+
 
 ggplot(plot,aes(x=coef))+
   geom_density(alpha=.4)+
@@ -233,20 +233,20 @@ ggplot(plot2,aes(x=coef,fill=effect))+
 
 # approach 3 plot ---------------------------------------------------------
 
-plot3 <- readRDS('approach3/bootstrap1_10samples.rds')
+boot1 <- readRDS('approach3/results/bootstrap1_10samples.rds')
+boot2 <- readRDS('approach3/results/bootstrap2_50samples.rds')
+boot3 <- readRDS('approach3/results/bootstrap3_50samples.rds')
 
-qb<-data.frame(coef = plot$coef.passer_player_id..Intercept.,effect = 'QB')
-team<- data.frame(coef = plot$coef.team..Intercept.,effect='Team')
-defteam<- data.frame(coef = plot$coef.def_team..Intercept.,effect='DefTeam')
+boot <- rbind(boot1,boot2,boot3)
 
+qb<-data.frame(coef = boot$passer_player_id..Intercept.,effect = 'QB')
+team<- data.frame(coef = boot$team..Intercept.,effect='Team')
+defteam<- data.frame(coef = boot$def_team..Intercept.,effect='DefTeam')
 plot3 <- rbind(qb,team,defteam)
-
 plot3$effect <- factor(plot3$effect,levels = c('DefTeam','Team','QB'))
 
 ggplot(plot3,aes(x=coef,fill=effect))+
   geom_density(alpha=.4)+
   theme_bw()+ 
-  labs(x='Coefficient', y='Density')
+  labs(x='Coefficient', y='Density') + ggsave('out1.png',dpi=400)
 
-
-resampled_data

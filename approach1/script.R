@@ -1,6 +1,6 @@
 # Bootstraping Mixed Effects EPA impact --
 
-setwd("~/GitHub/mixed_effects_bootstrapping")
+setwd("~/GitHub/mixed_effects_bootstrapping/approach1")
 
 # libraries ---------------------------------------------------------------
 
@@ -36,7 +36,6 @@ npass <- pbp %>%
     num_plays = n()
   ); pbp<-merge(pbp,npass,by='passer_player_id',all.x = T,no.dups = T)
 
-#nflfastR's EPA model already accounts for a lot of variables so we will keep it simple
 pbp_mut<-pbp%>% 
   dplyr::filter(
     play_type == 'pass',
@@ -73,21 +72,19 @@ pbp_mut<-pbp%>%
   select(epa,passer_player_id,pos_coach,def_coach,team,wp,def_team,season,home,era)
 
 rm(pbp)
-
-#set.seed(20)
-
+rm(.Random.seed, envir=globalenv())
 era1 = pbp_mut %>% filter(era == 'era1');era1=era1[sample(nrow(era1), 25000, replace = FALSE),]
 era2 = pbp_mut %>% filter(era == 'era2');era2=era2[sample(nrow(era2), 25000, replace = FALSE),]
 era3 = pbp_mut %>% filter(era == 'era3');era3=era3[sample(nrow(era3), 30000, replace = FALSE),]
 era4 = pbp_mut %>% filter(era == 'era4');era4=era4[sample(nrow(era4), 20000, replace = FALSE),]
 
-sample = rbind(era1,era2,era3,era4)
+#sample = rbind(era1,era2,era3,era4)
 
-saveRDS(sample,'approach3/sample3.rds')
+#saveRDS(sample,'sample2.rds')
 
 # Mixed model -------------------------------------------------------------
 
-sample = readRDS('approach3/sample1.rds')
+sample = readRDS('sample2.rds')
 
 mixed_model<-sample %>% 
   lmer(formula=
@@ -138,7 +135,7 @@ sample<-sample %>% select(epa,wp,team,def_team,passer_player_id,era)
 
 rm(.Random.seed, envir=globalenv())
 # index
-start_time <- Sys.time();indx <- sampler(sample, "era", reps = 40);end_time <- Sys.time();end_time - start_time
+start_time <- Sys.time();indx <- sampler(sample, "era", reps = 100);end_time <- Sys.time();end_time - start_time
 # resample
 start_time <- Sys.time(); resampled_data <- cbind(indx, sample[indx$RowID, ]);end_time <- Sys.time();end_time - start_time
 
@@ -185,9 +182,6 @@ boot_function <- function(i) {
 
 # Run bootstrap -----------------------------------------------------------
 
-# 20 min for 10 samples
-# 178 min for 50 (1)
-# 20 min for 50 samples? 
 start <- proc.time(); output <- parLapplyLB(clus, X = levels(resampled_data$Replicate), fun = boot_function); end <- proc.time();end-start
 
 #Success rate
@@ -204,40 +198,15 @@ final <- do.call(cbind, output[success])
 final_transposed<-t(final) %>% data.frame()
 coefficients <- final_transposed
 
-saveRDS(coefficients,'approach3/results/bootstrap3_50samples.rds')
+saveRDS(coefficients,'results/sample1_40iter_1.rds')
 
-# Plot Result -------------------------------------------------------------
-
-plot <- data.frame(coef = readRDS('approach3/bootstrap1_10samples.rds'))
-
-
-ggplot(plot,aes(x=coef))+
-  geom_density(alpha=.4)+
-  theme_bw()+ 
-  labs(x='Coefficient', y='Density')
-
-# cum_plot ----------------------------------------------------------------
-
-qb <- data.frame(coef = readRDS('approach2/passer1.rds'),effect='QB')
-team <- data.frame(coef = readRDS('approach2/team1.rds'),effect='Team')
-coach <- data.frame(coef = readRDS('approach2/poscoach1.rds'),effect='Coach')
-defteam <- data.frame(coef = readRDS('approach2/defteam1.rds'),effect='DefTeam')
-defcoach <- data.frame(coef = readRDS('approach2/defcoach1.rds'),effect='DefCoach')
-
-plot2 <- rbind(qb,team,coach,defteam,defcoach)
-
-ggplot(plot2,aes(x=coef,fill=effect))+
-  geom_density(alpha=.4)+
-  theme_bw()+ 
-  labs(x='Coefficient', y='Density')
-
-# approach 3 plot ---------------------------------------------------------
-
-boot1 <- readRDS('approach3/results/bootstrap1_10samples.rds')
-boot2 <- readRDS('approach3/results/bootstrap2_50samples.rds')
-boot3 <- readRDS('approach3/results/bootstrap3_50samples.rds')
-
-boot <- rbind(boot1,boot2,boot3)
+# Plot Results -------------------------------------------------------------
+files <- list.files(path = "results");lst = list()
+for(i in files){
+  df_i <- readRDS(paste0("results/",i))
+  lst[[i]] <- df_i
+}
+boot <- dplyr::bind_rows(lst)
 
 qb<-data.frame(coef = boot$passer_player_id..Intercept.,effect = 'QB')
 team<- data.frame(coef = boot$team..Intercept.,effect='Team')
@@ -247,6 +216,15 @@ plot3$effect <- factor(plot3$effect,levels = c('DefTeam','Team','QB'))
 
 ggplot(plot3,aes(x=coef,fill=effect))+
   geom_density(alpha=.4)+
-  theme_bw()+ 
-  labs(x='Coefficient', y='Density') + ggsave('out1.png',dpi=400)
+  annotate(geom = "label", x = 0, y = 60,
+           label = "A label to talk about the value of the QB vs other variables.",size=4,hjust=0)+
+  theme_bw()+
+  labs(x='Coefficient', y='Density') +
+  labs(title = "Title - It Will be Long",
+       subtitle='Subtitle') + 
+  theme(
+    legend.title = element_blank(),
+    legend.position="top") + ggsave('out1.png',dpi=400, width=10,height=6, units = "in")
+
+
 

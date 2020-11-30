@@ -28,7 +28,7 @@ library(ggthemes)
 library(parallel)
 
 # Read data --------------------------------------------------------
-sample<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS') %>% 
+sample<-readRDS('~/GitHub/quantifying-value-nfl/pbp_mut.RDS') %>% 
   select(epa,POSC_rank,PDSC_rank,passer_player_id,wp,pos_coach)
 
 # Analysis --------------------------------------------------------
@@ -49,7 +49,7 @@ r <- getME(mixed_model, "theta")
 # Model -------------------------------------------------------------------
 main_start <- Sys.time()
 # index
-setwd("~/GitHub/mixed_effects_bootstrapping/PosCoach")
+setwd("~/GitHub/quantifying-value-nfl/PosCoach")
 rm(.Random.seed, envir=globalenv())
 start_time <- Sys.time();indx <- sampler(sample, "pos_coach", reps = 150);end_time <- Sys.time();(end_time - start_time)
 # resample

@@ -4,9 +4,9 @@ library(ggthemes)
 
 # prepare -----------------------------------------------------------------
 #QB
-files <- list.files(path = "~/GitHub/mixed_effects_bootstrapping/approach3/qb/results");lst = list()
+files <- list.files(path = "~/GitHub/quantifying-value-nfl/QB/results");lst = list()
 for(fil in files){
-  df_i <- readRDS(paste0("C:/Users/adrian-boss/Documents/GitHub/mixed_effects_bootstrapping/approach3/qb/results/",fil))
+  df_i <- readRDS(paste0("C:/Users/adrian-boss/Documents/GitHub/quantifying-value-nfl/QB/results/",fil))
   print(paste(fil,df_i$passer_player_id..Intercept. %>% mean()))
   lst[[fil]] <- df_i
 }
@@ -19,9 +19,9 @@ for (i in 1:300){
 qb_mc<-data.frame(coef=qb_lst %>% unlist(),effect = 'QB')
 
 #DefTeam
-files <- list.files(path = "~/GitHub/mixed_effects_bootstrapping/approach3/DefTeam/results");lst = list()
+files <- list.files(path = "~/GitHub/quantifying-value-nfl/DefTeam/results");lst = list()
 for(fil in files){
-  df_i <- readRDS(paste0("~/GitHub/mixed_effects_bootstrapping/approach3/DefTeam/results/",fil))
+  df_i <- readRDS(paste0("~/GitHub/quantifying-value-nfl/DefTeam/results/",fil))
   print(paste(fil,df_i$PDSC_rank..Intercept. %>% mean()))
   lst[[fil]] <- df_i
 }
@@ -34,9 +34,9 @@ for (i in 1:300){
 defteam_mc<-data.frame(coef=defteam_lst %>% unlist(),effect = 'Defensive Roster')
 
 #Team
-files <- list.files(path = "~/GitHub/mixed_effects_bootstrapping/approach3/Team/results");lst = list()
+files <- list.files(path = "~/GitHub/quantifying-value-nfl/Team/results");lst = list()
 for(fil in files){
-  df_i <- readRDS(paste0("~/GitHub/mixed_effects_bootstrapping/approach3/Team/results/",fil))
+  df_i <- readRDS(paste0("~/GitHub/quantifying-value-nfl/Team/results/",fil))
   print(paste(fil,df_i$POSC_rank..Intercept. %>% mean()))
   lst[[fil]] <- df_i
 }
@@ -48,9 +48,9 @@ for (i in 1:300){
 }; 
 team_mc<-data.frame(coef=team_lst %>% unlist(),effect = 'Offensive Supporting Cast')
 #Def Coach
-files <- list.files(path = "~/GitHub/mixed_effects_bootstrapping/approach3/DefCoach/results");lst = list()
+files <- list.files(path = "~/GitHub/quantifying-value-nfl/DefCoach/results");lst = list()
 for(fil in files){
-  df_i <- readRDS(paste0("~/GitHub/mixed_effects_bootstrapping/approach3/DefCoach/results/",fil))
+  df_i <- readRDS(paste0("~/GitHub/quantifying-value-nfl/DefCoach/results/",fil))
   print(paste(fil,df_i$def_coach..Intercept. %>% mean()))
   lst[[fil]] <- df_i
 }
@@ -62,9 +62,9 @@ for (i in 1:300){
 }; 
 defcoach_mc<-data.frame(coef=defcoach_lst %>% unlist(),effect = 'Defensive Coach')
 #PosCoach
-files <- list.files(path = "~/GitHub/mixed_effects_bootstrapping/PosCoach/results");lst = list()
+files <- list.files(path = "~/GitHub/quantifying-value-nfl/PosCoach/results");lst = list()
 for(fil in files){
-  df_i <- readRDS(paste0("~/GitHub/mixed_effects_bootstrapping/PosCoach/results/",fil))
+  df_i <- readRDS(paste0("~/GitHub/quantifying-value-nfl/PosCoach/results/",fil))
   print(paste(fil,df_i$pos_coach..Intercept. %>% mean()))
   lst[[fil]] <- df_i
 }
@@ -80,14 +80,13 @@ poscoach_mc<-data.frame(coef=poscoach_lst %>% unlist(),effect = 'Offensive Coach
 
 # Plot Results ------------------------------------------------------------
 
-plot<-readRDS('~/GitHub/mixed_effects_bootstrapping/plot_data.RDS')
+plot<-readRDS('~/GitHub/quantifying-value-nfl/plot_data.RDS')
 plot$effect <- factor(plot$effect,levels = c('Offensive Coach',
                                              'Defensive Coach',
                                              'Defensive Roster',
                                              'Offensive Supporting Cast',
                                              'QB'))
-
-setwd("~/GitHub/mixed_effects_bootstrapping")
+setwd("~/GitHub/quantifying-value-nfl")
 
 plot%>% ggplot(aes(x=coef,fill=effect))+
   geom_density(alpha=.4)+

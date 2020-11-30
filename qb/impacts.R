@@ -1,7 +1,7 @@
 library(dplyr)
 library(ggplot2)
 library(ggthemes)
-setwd("~/GitHub/mixed_effects_bootstrapping/qb")
+setwd("~/GitHub/mixed_effects_bootstrapping/QB")
 
 files <- list.files(path = "results");lst = list()
 for(fil in files){

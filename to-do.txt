@@ -1,4 +1,0 @@
-1- merge PFF grades (season level) to play-by-play
-2- EDA: position grade has a large effect on EPA:
-	- OL vs Receiving
-	Effect of overall defensive grades

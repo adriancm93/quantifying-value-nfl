@@ -41,7 +41,7 @@ pbp_mut<-pbp%>%
     def_team = paste(season,defteam,sep='_')
   )   %>% 
   select(epa,passer_player_id,pos_coach,def_coach,team,wp,def_team,season)
-saveRDS(pbp_mut,'~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+saveRDS(pbp_mut,'~/GitHub/quantifying-value-nfl/pbp_mut.RDS')
 # new Features -------------------------------------------------------------
 #Offensive
 pff<-read.csv("~/pff_grades_seas.csv")
@@ -65,8 +65,8 @@ rank <- pff %>% select(Year,Team_abr,PDSC)%>%
 pff<-cbind(pff,rank %>% select(PDSC_rank))
 def_pass <- pff %>% select(PDSC,PDSC_rank,def_team = key)
 #Merge
-pbp_mut<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+pbp_mut<-readRDS('~/GitHub/quantifying-value-nfl/pbp_mut.RDS')
 pbp_mut <- pbp_mut %>% filter(season >= 2006)
 pbp_mut=merge(x=pbp_mut,y=sup_pass,by='team',how='left',no.dups = T)
 pbp_mut=merge(x=pbp_mut,y=def_pass,by='def_team',how='left',no.dups = T)
-saveRDS(pbp_mut,'~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+saveRDS(pbp_mut,'~/GitHub/quantifying-value-nfl/pbp_mut.RDS')

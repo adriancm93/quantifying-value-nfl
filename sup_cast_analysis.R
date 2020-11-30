@@ -5,7 +5,7 @@ library(ggthemes)
 # Offense Analysis
 pff<-read.csv("~/pff_grades_seas.csv")
 sup_rec <- pff %>% select(PBLK,RECV,poskey = key)
-sample<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+sample<-readRDS('~/GitHub/quantifying-value-nfl/pbp_mut.RDS')
 sample$poskey <- sample$team
 sample = sample %>% filter(season >= 2006)
 merged <-merge(x=sample,y=sup_rec,by='poskey',how='left',no.dups = T)
@@ -51,7 +51,7 @@ mean(fr$RECV)/(mean(fr$PBLK) + mean(fr$RECV))
 # Defensive Analysis
 pff<-read.csv("~/pff_grades_seas.csv")
 sup_rec <- pff %>% select(PRSH,Cov,defkey = key)
-sample<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+sample<-readRDS('~/GitHub/quantifying-value-nfl/pbp_mut.RDS')
 sample$defkey <- sample$def_team
 sample = sample %>% filter(season >= 2006)
 merged_def <-merge(x=sample,y=sup_rec,by='defkey',how='left',no.dups = T)

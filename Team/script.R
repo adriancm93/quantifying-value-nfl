@@ -6,7 +6,7 @@ library(ggthemes)
 library(parallel)
 
 # Read data --------------------------------------------------------
-sample<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS')
+sample<-readRDS('~/GitHub/quantifying-value-nfl/pbp_mut.RDS')
 sample<-sample %>% select(epa,POSC_rank,PDSC_rank,passer_player_id,wp)
 # Function --------------------------------------------------------
 sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
@@ -50,7 +50,7 @@ r <- getME(mixed_model, "theta")
 
 main_start <- Sys.time()
 # index
-setwd("~/GitHub/mixed_effects_bootstrapping/approach3/Team")
+setwd("~/GitHub/quantifying-value-nfl/Team")
 rm(.Random.seed, envir=globalenv())
 start_time <- Sys.time();indx <- sampler(sample, "POSC_rank", reps = 100);end_time <- Sys.time();(end_time - start_time)
 # resample

@@ -50,7 +50,7 @@ r <- getME(mixed_model, "theta")
 
 main_start <- Sys.time()
 # index
-setwd("~/GitHub/mixed_effects_bootstrapping/approach3/qb")
+setwd("~/GitHub/mixed_effects_bootstrapping/approach3/QB")
 rm(.Random.seed, envir=globalenv())
 start_time <- Sys.time();indx <- sampler(sample, "passer_player_id", reps = 150);end_time <- Sys.time();(end_time - start_time)
 # resample

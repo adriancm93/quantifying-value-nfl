@@ -2,7 +2,7 @@ library(dplyr)
 library(ggplot2)
 library(ggthemes)
 library(RColorBrewer)
-setwd("~/GitHub/mixed_effects_bootstrapping/Team")
+setwd("~/GitHub/quantifying-value-nfl/Team")
 
 files <- list.files(path = "results");lst = list()
 for(fil in files){

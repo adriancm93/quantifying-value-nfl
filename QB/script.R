@@ -6,9 +6,12 @@ library(ggthemes)
 library(parallel)
 
 # Read data --------------------------------------------------------
-sample<-readRDS('~/GitHub/mixed_effects_bootstrapping/pbp_mut.RDS') %>% 
+
+sample<-readRDS(url("https://github.com/adriancm93/quantifying-value-nfl/blob/master/pbp_mut.RDS?raw=true")) %>% 
   select(epa,POSC_rank,PDSC_rank,passer_player_id,wp)
+
 # Function --------------------------------------------------------
+
 sampler <- function(dat, clustervar, replace = TRUE, reps = 1) {
   cid <- unique(dat[, clustervar[1]])
   ncid <- length(cid)
